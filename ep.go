@@ -138,7 +138,7 @@ func parseLine(result map[string]string, parent string) {
 
 		// if we have a match (captured values), then gather results, optionally parse child patterns and finally break look 	
 		if len(match) > 0 {
-			result["type"] = pat.Name
+			result["event_type"] = pat.Name
 
 			// delete source field if not stated otherwise
 			value := result[field]
