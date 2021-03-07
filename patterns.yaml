@@ -18,6 +18,8 @@
   cond:
     program: systemd
   pattern: ^%{GREEDYDATA:data}$
+  optionalpattern:
+    - (?P<action>Started Session) %{INT:session_id} of user %{NOTSPACE:user}
 
 - name: rsyslogd
   parent: auditd
