@@ -3,7 +3,13 @@ package main
 import(
 	//"regexp"
 	"fmt"
-	//"log"
+	"flag"
+	"log"
+	"strconv"
+	"io"
+	"time"
+	"os/user"
+	"path/filepath"
 	"os"
 	"bufio"
 	"io/ioutil"
@@ -13,6 +19,21 @@ import(
 	//"github.com/vjeantet/grok"
 	"github.com/trivago/grok"
 )
+
+/** logging **/
+
+/** logging **/
+type logWriter struct {
+    writer io.Writer
+	timeFormat string
+	user string
+	hostname string
+}
+
+func (w logWriter) Write(b []byte) (n int, err error) {
+	return w.writer.Write([]byte(time.Now().Format(w.timeFormat) + "\t" + "ep@" + w.hostname + "\t" + w.user + "\t" + strconv.Itoa(os.Getpid()) + "\t" + string(b)))
+}
+/** end logging **/
 
 // this is for unmarshalling string or list of strings
 // https://github.com/go-yaml/yaml/issues/100
@@ -173,6 +194,8 @@ func parseLine(result map[string]string, parent string) {
 
 // global variables
 var patternconf conf
+// global logger sh***
+var logger *log.Logger
 
 func parsePatternConfiguration(configFile string) (conf) {
 
@@ -180,7 +203,7 @@ func parsePatternConfiguration(configFile string) (conf) {
 
 	yamlBuf, err := ioutil.ReadFile(configFile)
 	if err != nil {
-		fmt.Printf("yamlFile.Get err   #%v ", err)
+		logger.Fatal("config file (", configFile, ") read error. Err: ", err)
 	}
 
 	yaml.Unmarshal(yamlBuf, &parsedconf.Patterns)
@@ -201,7 +224,7 @@ func parsePatternConfiguration(configFile string) (conf) {
 	for i, patConf := range parsedconf.Patterns {
 		g, err := grok.New(grok.Config{Patterns: patConf.Grokpattern, NamedCapturesOnly: true})
 		if err != nil {
-			fmt.Println("err: ", err)
+			logger.Println("could not create grok parser for ", patConf.Name, ". Err: ", err)
 			continue
 		}
 
@@ -209,7 +232,7 @@ func parsePatternConfiguration(configFile string) (conf) {
 		for _, pat := range patConf.Pattern {
 			cg,err := g.Compile(pat)
 			if err != nil {
-				fmt.Println("err: ", err)
+				logger.Println("err: ", err)
 				continue
 			}
 			parsedconf.Patterns[i].CompiledPattern = append(parsedconf.Patterns[i].CompiledPattern, *cg)
@@ -219,7 +242,7 @@ func parsePatternConfiguration(configFile string) (conf) {
 		for _, pat := range patConf.Optionalpattern {
 			cg,err := g.Compile(pat)
 			if err != nil {
-				fmt.Println("err: ", err)
+				logger.Println("err: ", err)
 				continue
 			}
 			parsedconf.Patterns[i].OptionalCompiledPattern = append(parsedconf.Patterns[i].OptionalCompiledPattern, *cg)
@@ -230,7 +253,7 @@ func parsePatternConfiguration(configFile string) (conf) {
 		for field, pat := range patConf.Cond {
 			cg,err := g.Compile(pat)
 			if err != nil {
-				fmt.Println("err: ", err)
+				logger.Println("err: ", err)
 				continue
 			}
 			parsedconf.Patterns[i].CompiledCond[field] = *cg
@@ -241,7 +264,7 @@ func parsePatternConfiguration(configFile string) (conf) {
 		for field, pat := range patConf.Softcond {
 			cg,err := g.Compile(pat)
 			if err != nil {
-				fmt.Println("err: ", err)
+				logger.Println("err: ", err)
 				continue
 			}
 			parsedconf.Patterns[i].CompiledSoftcond[field] = *cg
@@ -253,7 +276,60 @@ func parsePatternConfiguration(configFile string) (conf) {
 
 func main() {
 
-	patternconf = parsePatternConfiguration("patterns.yaml")
+	patterns := flag.String("patterns", "patterns.yaml", "set patterns file")
+	logToFile := flag.String("log", "", "enable logging. \"-\" for stdout, filename otherwise")
+	flag.Parse()
+
+	/**
+		set up logging
+	**/
+
+	if *logToFile == "" {
+		logger = log.New(ioutil.Discard, "", 0)
+	} else { // enable logging
+		// get user info for log
+		userobj, err := user.Current()
+		usern := "-"
+		if err != nil {
+			log.Println("failed getting current user")
+		}
+		usern = userobj.Username
+
+		// get host info for log
+		hostname, err := os.Hostname()
+		if err != nil {
+			log.Println("failed getting machine hostname")
+			hostname = "-"
+		}
+
+		if *logToFile == "-" { // to stdout
+			logger = log.New(os.Stdout, "", 0)
+			logger.SetFlags(0)
+			logger.SetOutput(logWriter{writer: logger.Writer(), timeFormat: "2006-01-02T15:04:05.999Z07:00", user: usern, hostname: hostname})
+		} else { // to file
+			// get binary path
+			logpath := *logToFile
+			dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+			if err != nil {
+				log.Println("couldn't get binary path - logfile path is relative to exec dir")
+			} else {
+				logpath = dir + "/" + *logToFile
+			}
+
+			f, err := os.OpenFile(logpath, os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
+			if err != nil {
+				log.Println("opening file " + *logToFile + " failed, writing log to stdout")
+			} else {
+				defer f.Close()
+				logger = log.New(f, "", 0)
+				logger.SetOutput(logWriter{writer: logger.Writer(), timeFormat: "2006-01-02T15:04:05.999Z", user: usern, hostname: hostname})
+			}
+		}
+	}
+
+	logger.Println("starting with conf values - patterns:", *patterns)
+
+	patternconf = parsePatternConfiguration(*patterns)
 
 	/*jsondata,_ := json.Marshal(patternconf)
 	fmt.Println(string(jsondata))*/

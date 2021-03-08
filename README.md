@@ -3,6 +3,8 @@
 
 Simple unstructured textual data parser using regex named groups (with grok support). Input data is consumed from stdin, parsed using defined patterns and printed to stdout as json. From there other utils such as `brimsec/zq`, `endgameinc/eql` or `stedolan/jq` can be used to query the data.
 
+**use it at your own risk !**
+
 **ep** usage
 ```bash
 $ echo "Mar  7 00:00:00 localhost systemd: Started Session 0001 of user root " | ep
