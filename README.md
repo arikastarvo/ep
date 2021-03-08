@@ -5,6 +5,14 @@ Simple unstructured textual data parser using regex named groups (with grok supp
 
 **use it at your own risk !**
 
+```text
+Usage of ep
+  -log string
+        enable logging. "-" for stdout, filename otherwise
+  -patterns string
+        set patterns file (default "patterns.yaml")
+```
+
 **ep** usage
 ```bash
 $ echo "Mar  7 00:00:00 localhost systemd: Started Session 0001 of user root " | ep
