@@ -226,6 +226,12 @@ func parsePatternConfiguration(configuration []byte) (conf) {
 
 	// pre-compile various patterns (using grok)
 	for i, patConf := range parsedconf.Patterns {
+		// add default grok patterns to all
+		if (patConf.Grokpattern == nil) {
+			patConf.Grokpattern = make(map[string]string)
+		}
+		patConf.Grokpattern["GD"] = ".*"
+		// end add default groks
 		g, err := grok.New(grok.Config{Patterns: patConf.Grokpattern, NamedCapturesOnly: true})
 		if err != nil {
 			logger.Println("could not create grok parser for ", patConf.Name, ". Err: ", err)
