@@ -7,12 +7,14 @@ Simple unstructured textual data parser using regex named groups (with grok supp
 
 ```text
 Usage of ep:
+  -conf string
+        set patterns file (default "patterns.yaml")
   -log string
         enable logging. "-" for stdout, filename otherwise
+  -p string
+        short version of -pattern
   -pattern string
-        set pattern inline (if set, this is used instead of -patterns)
-  -patterns string
-        set patterns file (default "patterns.yaml")
+        set pattern inline (if set, this is used instead of -conf)
 ```
 
 **ep** usage

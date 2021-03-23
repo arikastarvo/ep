@@ -278,10 +278,16 @@ func parsePatternConfiguration(configuration []byte) (conf) {
 	return parsedconf
 }
 
+var patternArg = flag.String("pattern", "", "set pattern inline (if set, this is used instead of -conf)")
+var patternConfFile = flag.String("conf", "patterns.yaml", "set patterns file")
+	
+func init() {
+    // example with short version for long flag
+    flag.StringVar(patternArg, "p", "", "short version of -pattern")
+}
+
 func main() {
 
-	patterns := flag.String("patterns", "patterns.yaml", "set patterns file")
-	pattern := flag.String("pattern", "", "set pattern inline (if set, this is used instead of -patterns)")
 	logToFile := flag.String("log", "", "enable logging. \"-\" for stdout, filename otherwise")
 	flag.Parse()
 
@@ -332,14 +338,15 @@ func main() {
 		}
 	}
 
-	logger.Println("starting with conf values - pattern:", *pattern, "; patterns:", *patterns)
+	logger.Println("starting with conf values - pattern:", *patternArg, "; conf:", *patternConfFile)
 
-	if (*pattern != "") {
+	if (*patternArg != "") {
 		confStr := `- name: event
-  pattern: "` + *pattern + `"`
+  pattern: "` + *patternArg + `"`
+		//fmt.Println(confStr)
 		patternconf = parsePatternConfiguration([]byte(confStr))
 	} else {
-		patternconf = parsePatternConfigurationFromFile(*patterns)
+		patternconf = parsePatternConfigurationFromFile(*patternConfFile)
 	}
 	/*jsondata,_ := json.Marshal(patternconf)
 	fmt.Println(string(jsondata))*/
