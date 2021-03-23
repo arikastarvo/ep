@@ -6,9 +6,11 @@ Simple unstructured textual data parser using regex named groups (with grok supp
 **use it at your own risk !**
 
 ```text
-Usage of ep
+Usage of ep:
   -log string
         enable logging. "-" for stdout, filename otherwise
+  -pattern string
+        set pattern inline (if set, this is used instead of -patterns)
   -patterns string
         set patterns file (default "patterns.yaml")
 ```

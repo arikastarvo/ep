@@ -197,16 +197,20 @@ var patternconf conf
 // global logger sh***
 var logger *log.Logger
 
-func parsePatternConfiguration(configFile string) (conf) {
+func parsePatternConfigurationFromFile(configFile string) (conf) {
 
-	var parsedconf conf
-
-	yamlBuf, err := ioutil.ReadFile(configFile)
+	fileBuf, err := ioutil.ReadFile(configFile)
 	if err != nil {
 		logger.Fatal("config file (", configFile, ") read error. Err: ", err)
 	}
+	return parsePatternConfiguration(fileBuf)
+}
 
-	yaml.Unmarshal(yamlBuf, &parsedconf.Patterns)
+func parsePatternConfiguration(configuration []byte) (conf) {
+
+	var parsedconf conf
+
+	yaml.Unmarshal(configuration, &parsedconf.Patterns)
 	sort.SliceStable(parsedconf.Patterns, func(i, j int) bool {
 		return parsedconf.Patterns[i].Order < parsedconf.Patterns[j].Order
 	})
@@ -277,6 +281,7 @@ func parsePatternConfiguration(configFile string) (conf) {
 func main() {
 
 	patterns := flag.String("patterns", "patterns.yaml", "set patterns file")
+	pattern := flag.String("pattern", "", "set pattern inline (if set, this is used instead of -patterns)")
 	logToFile := flag.String("log", "", "enable logging. \"-\" for stdout, filename otherwise")
 	flag.Parse()
 
@@ -327,10 +332,15 @@ func main() {
 		}
 	}
 
-	logger.Println("starting with conf values - patterns:", *patterns)
+	logger.Println("starting with conf values - pattern:", *pattern, "; patterns:", *patterns)
 
-	patternconf = parsePatternConfiguration(*patterns)
-
+	if (*pattern != "") {
+		confStr := `- name: event
+  pattern: "` + *pattern + `"`
+		patternconf = parsePatternConfiguration([]byte(confStr))
+	} else {
+		patternconf = parsePatternConfigurationFromFile(*patterns)
+	}
 	/*jsondata,_ := json.Marshal(patternconf)
 	fmt.Println(string(jsondata))*/
 
