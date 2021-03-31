@@ -22,7 +22,3 @@
     - \sx-pid=\"(?P<pid>[0-9]+)\"
     - \s(?P<action>rsyslogd was HUPed)$
     - \s(?P<action>start)$
-
-- name: leftovers
-  pattern: (?P<data>.+)
-  order: 10

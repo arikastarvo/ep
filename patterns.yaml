@@ -1,3 +1,6 @@
 - name: event
   pattern: (?P<data>.+)
   order: 1
+  children:
+    - patterns/apache.yaml
+    - patterns/auditd.yaml

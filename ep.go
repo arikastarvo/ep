@@ -206,16 +206,52 @@ func parsePatternConfigurationFromFile(configFile string) (conf) {
 	return parsePatternConfiguration(fileBuf)
 }
 
-func parsePatternConfiguration(configuration []byte) (conf) {
-
+func unmarshalRecursive(configuration []byte, forceParent string) (conf) {
+	
 	var parsedconf conf
-
 	yaml.Unmarshal(configuration, &parsedconf.Patterns)
 	sort.SliceStable(parsedconf.Patterns, func(i, j int) bool {
 		return parsedconf.Patterns[i].Order < parsedconf.Patterns[j].Order
 	})
+	
+	// index uniq pattern names && set forceParent
+	var uniqPatterns []string
+	for i, pat := range parsedconf.Patterns {
+		
+		if !contains(uniqPatterns, pat.Name) {
+			uniqPatterns = append(uniqPatterns, pat.Name)
+		}
 
-	// map children	
+		if len(forceParent) > 0 {
+			parsedconf.Patterns[i].Parent = append(parsedconf.Patterns[i].Parent, forceParent)
+		}
+	}
+
+	// let's try to include other referenced pattern conf files (only applicable to children definitions for now)
+	for _, pat := range parsedconf.Patterns {
+		for _, child := range pat.Children {
+			if !contains(uniqPatterns, child) {
+				if _, err := os.Stat(child); err == nil {
+					//fmt.Println("going sub level for ", child)
+					fileBuf, err := ioutil.ReadFile(child)
+					if err != nil {
+						logger.Fatal("sub-config file (", child, ") read error. Err: ", err)
+					}
+					parsedconf.Patterns = append(parsedconf.Patterns, unmarshalRecursive(fileBuf, pat.Name).Patterns...)
+				}
+			}
+		}
+	}
+
+	return parsedconf
+}
+
+func parsePatternConfiguration(configuration []byte) (conf) {
+
+	// read configurations recursively
+	parsedconf := unmarshalRecursive(configuration, "")
+
+	// map children	(set children based on parents in configuration)
 	for i, pat := range parsedconf.Patterns {
 		for _, subpat := range parsedconf.Patterns {
 			if contains(subpat.Parent, pat.Name) && !contains(parsedconf.Patterns[i].Children, subpat.Name) {
@@ -223,9 +259,11 @@ func parsePatternConfiguration(configuration []byte) (conf) {
 			}
 		}
 	}
-	// map parents	
+
+	// map parents (set parents based on children in configuration)
 	for i, pat := range parsedconf.Patterns {
 		for _, subpat := range parsedconf.Patterns {
+			// check if we have this event and it hasn't set as parent yet
 			if contains(subpat.Children, pat.Name) && !contains(parsedconf.Patterns[i].Parent, subpat.Name) {
 				parsedconf.Patterns[i].Parent = append(parsedconf.Patterns[i].Parent, subpat.Name)
 			}

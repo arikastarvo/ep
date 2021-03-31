@@ -1,7 +1,7 @@
-- name: apache-access
-  order: 1
-  pattern: (?P<dsthost>[^:\s]+):%{INT:dstport}\s%{NOTSPACE:srcip}\s\S+\s\S+\s\[%{HTTPDATE:srctime_unparsed}\]\s\"(?P<http_method>\w+)\s(?P<http_path>\S+)\s(?P<http_version>\S+?)\"\s(?P<http_response_status>[0-9]+)\s(?P<http_response_size>[0-9]+)\s\"(?P<http_referer>.*?)\"\s\"(?P<http_ua>.*?)\"
+- name: apache-access-common
+  order: 10
+  pattern: '^%{NOTSPACE:src}\s%{NOTSPACE:identd}\s%{NOTSPACE:user}\s\[%{HTTPDATE:srctime_unparsed}\]\s\"(?P<http_method>\w+)\s(?P<http_path>\S+)\s(?P<http_version>\S+?)\"\s(?P<http_response_status>[0-9]+)\s(?P<http_response_size>[0-9]+)$'
 
-- name: lefovers
-  order: 2
-  pattern: (?P<data>.+)
+- name: apache-access-combined
+  order: 20
+  pattern: '^%{NOTSPACE:src}\s%{NOTSPACE:identd}\s%{NOTSPACE:user}\s\[%{HTTPDATE:srctime_unparsed}\]\s\"(?P<http_method>\w+)\s(?P<http_path>\S+)\s(?P<http_version>\S+?)\"\s(?P<http_response_status>[0-9]+)\s(?P<http_response_size>[0-9]+)\s\"(?P<http_referer>.*?)\"\s\"(?P<ua>.*?)\"$'
