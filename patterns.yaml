@@ -1,5 +1,22 @@
+
+- name: grep-default-output
+  parent: event
+  pattern: ^(?P<source_filename>[[:alnum:]/_%!$@.,+~-]+?):\t?%{GREEDYDATA:data}$
+  order: 1
+  children: 
+    - patterns/apache.yaml
+    - patterns/auditd.yaml
+
+- name: grep-nullsep-output
+  parent: event
+  pattern: ^(?P<source_filename>[[:alnum:]/_%!$@.,+~-]+?)\0\t?%{GREEDYDATA:data}$
+  order: 1
+  children: 
+    - patterns/apache.yaml
+    - patterns/auditd.yaml
+
 - name: event
-  pattern: (?P<data>.+)
+  pattern: ^(?P<data>.+)$
   order: 1
   children:
     - patterns/apache.yaml
