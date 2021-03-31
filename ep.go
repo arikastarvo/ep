@@ -218,7 +218,7 @@ func parsePatternConfiguration(configuration []byte) (conf) {
 	// map children	
 	for i, pat := range parsedconf.Patterns {
 		for _, subpat := range parsedconf.Patterns {
-			if contains(subpat.Parent, pat.Name) {
+			if contains(subpat.Parent, pat.Name) && !contains(parsedconf.Patterns[i].Children, subpat.Name) {
 				parsedconf.Patterns[i].Children = append(parsedconf.Patterns[i].Children, subpat.Name)
 			}
 		}
