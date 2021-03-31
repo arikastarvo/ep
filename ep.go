@@ -284,12 +284,31 @@ func parsePatternConfiguration(configuration []byte) (conf) {
 	return parsedconf
 }
 
-var patternArg = flag.String("pattern", "", "set pattern inline (if set, this is used instead of -conf)")
+/** argparse **/
+type arrayFlags []string
+
+func (i *arrayFlags) String() string {
+	var ret string
+	for _,val := range *i {
+		ret += val
+	}
+	return ret
+    //return strings.Join(*i, ",")
+}
+
+func (i *arrayFlags) Set(value string) error {
+    *i = append(*i, value)
+    return nil
+}
+
+var patternsArg arrayFlags
+
 var patternConfFile = flag.String("conf", "patterns.yaml", "set patterns file")
 	
 func init() {
     // example with short version for long flag
-    flag.StringVar(patternArg, "p", "", "short version of -pattern")
+	flag.Var(&patternsArg, "pattern", "set pattern inline (if set, this is used instead of -conf)")
+    flag.Var(&patternsArg, "p", "short version of -pattern")
 }
 
 func main() {
@@ -344,16 +363,24 @@ func main() {
 		}
 	}
 
-	logger.Println("starting with conf values - pattern:", *patternArg, "; conf:", *patternConfFile)
+	logger.Println("starting with conf values - pattern:", patternsArg, "; conf:", *patternConfFile)
 
-	if (*patternArg != "") {
-		confStr := `- name: event
-  pattern: "` + *patternArg + `"`
+	if len(patternsArg) > 0 {
+		confStr := ""
+		ord := 0
+		for _, pat := range patternsArg {
+			confStr += `- name: event
+  pattern: "` + pat + `"
+  order: ` + strconv.Itoa(ord) + ` 
+`
+			ord++
+		}
 		//fmt.Println(confStr)
 		patternconf = parsePatternConfiguration([]byte(confStr))
 	} else {
 		patternconf = parsePatternConfigurationFromFile(*patternConfFile)
 	}
+	
 	/*jsondata,_ := json.Marshal(patternconf)
 	fmt.Println(string(jsondata))*/
 
