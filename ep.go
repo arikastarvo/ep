@@ -223,6 +223,14 @@ func parsePatternConfiguration(configuration []byte) (conf) {
 			}
 		}
 	}
+	// map parents	
+	for i, pat := range parsedconf.Patterns {
+		for _, subpat := range parsedconf.Patterns {
+			if contains(subpat.Children, pat.Name) && !contains(parsedconf.Patterns[i].Parent, subpat.Name) {
+				parsedconf.Patterns[i].Parent = append(parsedconf.Patterns[i].Parent, subpat.Name)
+			}
+		}
+	}
 
 	// pre-compile various patterns (using grok)
 	for i, patConf := range parsedconf.Patterns {
