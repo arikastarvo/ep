@@ -39,8 +39,7 @@ $ echo "Mar  7 00:00:00 localhost systemd: Started Session 0001 of user root " |
 
 **ep** with **stedolan/jq**
 ```bash
-$ echo "Mar  7 00:00:00 localhost systemd: Started Session 0001 of user root " | ep | jq -c '. | select(.event_type=="systemd" and .user=="root") | {event_type, srctime, h
-ost, program, session_id, user, action }'
+$ echo "Mar  7 00:00:00 localhost systemd: Started Session 0001 of user root " | ep | jq -c '. | select(.event_type=="systemd" and .user=="root") | {event_type, srctime, host, program, session_id, user, action }'
 
 {"event_type":"systemd","srctime":"Mar  7 00:00:00","host":"localhost","program":"systemd","session_id":"0001","user":"root","action":"Started Session"}
 ```
