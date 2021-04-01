@@ -9,7 +9,7 @@
 
 - name: event
   pattern: ^(?P<data>.+)$
-  order: 1
+  order: 2
   children:
     - patterns/apache.yaml
     - patterns/auditd.yaml
