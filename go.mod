@@ -1,4 +1,4 @@
-module goparse
+module ep
 
 go 1.16
 
