@@ -4,7 +4,7 @@ import(
 	"fmt"
 	"flag"
 	//"log"
-	"strconv"
+	//"strconv"
 	"os"
 	"bufio"
 	"encoding/json"
@@ -62,14 +62,9 @@ func main() {
 	var p parser.Parser
 
 	if len(patternsArg) > 0 {
-		confStr := ""
-		ord := 0
+		confStr := "event:\n"
 		for _, pat := range patternsArg {
-			confStr += `event:
-  pattern: "` + pat + `"
-  order: ` + strconv.Itoa(ord) + ` 
-`
-			ord++
+			confStr += "  - " + pat + "\n"
 		}
 		p = parser.ParserFromBytes([]byte(confStr))
 	} else {
