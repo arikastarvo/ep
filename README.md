@@ -63,7 +63,7 @@ num-event: ^%{NUMBER:num}$
 data-event: ^%{GREEDYDATA:data}$
 
 # in: 3
-# out: {"event_type":"num-event","event_type_path":"/num-event","num":"3"}
+# out: {"event_type":"int-event","event_type_path":"/int-event","int":"3"}
 
 # in: 4.5
 # out: {"event_type":"num-event","event_type_path":"/num-event","num":"4.5"}
