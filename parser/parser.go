@@ -145,12 +145,12 @@ func (a *Pattern) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	patternStruct.Order = int(^uint(0) >> 1)
 	err := unmarshal(&patternStruct)
 	if err != nil {
-		var stringDefinition string
-		err := unmarshal(&stringDefinition)
+		var stringArrDfinition StringArray
+		err := unmarshal(&stringArrDfinition)
 		if err != nil {
 			return err
 		}
-		patternStruct.Pattern = []string{stringDefinition}
+		patternStruct.Pattern = stringArrDfinition
 	}
 
 	*a = Pattern(patternStruct)
