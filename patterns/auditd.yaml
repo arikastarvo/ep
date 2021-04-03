@@ -1,17 +1,15 @@
-- name: auditd
-  order: 1
-  pattern: ^%{SYSLOGTIMESTAMP:srctime}\s%{HOSTNAME:host}\s(?P<program>[\x21-\x5a\x5c\x5e-\x7e]+)(\[(?P<pid>[0-9]+)\])?:%{GREEDYDATA:data}$
+auditd: '^%{SYSLOGTIMESTAMP:srctime}\s%{HOSTNAME:host}\s(?P<program>[\x21-\x5a\x5c\x5e-\x7e]+)(\[(?P<pid>[0-9]+)\])?:%{GREEDYDATA:data}$'
 
-- name: systemd
+systemd:
   parent: auditd
-  order: 2
+  order: 1
   cond:
     program: systemd
   pattern: ^%{GREEDYDATA:data}$
   optionalpattern:
     - (?P<action>Started Session) %{INT:session_id} of user %{NOTSPACE:user}
 
-- name: rsyslogd
+rsyslogd:
   parent: auditd
   order: 2
   cond:

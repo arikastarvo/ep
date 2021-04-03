@@ -1,5 +1,4 @@
-
-- name: grep-output
+grep:
   parent: event
   pattern: ^(?P<source_filename>[[:alnum:]/_%!$@.,+~-]+?)(:|\0)\t?%{GREEDYDATA:data}$
   order: 1
@@ -7,7 +6,7 @@
     - patterns/apache.yaml
     - patterns/auditd.yaml
 
-- name: event
+event:
   pattern: ^(?P<data>.+)$
   order: 2
   children:

@@ -9,11 +9,15 @@ Simple unstructured textual data parser using regex named groups (with grok supp
 Usage of ep:
   -conf string
         set patterns file (default "patterns.yaml")
+  -debug
+        enable deug logging.
   -log string
         enable logging. "-" for stdout, filename otherwise
-  -p string
+  -os
+        output pattern conf (short format)
+  -p value
         short version of -pattern
-  -pattern string
+  -pattern value
         set pattern inline (if set, this is used instead of -conf)
 ```
 

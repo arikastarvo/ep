@@ -1,5 +1,4 @@
-- name: apache-access
-  order: 10
+apache-access:
   pattern:
-    - '^%{NOTSPACE:src}\s%{NOTSPACE:identd}\s%{NOTSPACE:user}\s\[%{HTTPDATE:srctime_unparsed}\]\s\"(?P<http_method>\w+)\s(?P<http_path>\S+)\s(?P<http_version>\S+?)\"\s(?P<http_response_status>[0-9]+)\s(?P<http_response_size>[0-9]+)$'
     - '^%{NOTSPACE:src}\s%{NOTSPACE:identd}\s%{NOTSPACE:user}\s\[%{HTTPDATE:srctime_unparsed}\]\s\"(?P<http_method>\w+)\s(?P<http_path>\S+)\s(?P<http_version>\S+?)\"\s(?P<http_response_status>[0-9]+)\s(?P<http_response_size>[0-9]+)\s\"(?P<http_referer>.*?)\"\s\"(?P<ua>.*?)\"$'
+    - '^%{NOTSPACE:src}\s%{NOTSPACE:identd}\s%{NOTSPACE:user}\s\[%{HTTPDATE:srctime_unparsed}\]\s\"(?P<http_method>\w+)\s(?P<http_path>\S+)\s(?P<http_version>\S+?)\"\s(?P<http_response_status>[0-9]+)\s(?P<http_response_size>[0-9]+)$'

@@ -15,16 +15,43 @@ type logWriter struct {
     writer io.Writer
 	timeFormat string
 	user string
+	app string
 	hostname string
 }
 
 func (w logWriter) Write(b []byte) (n int, err error) {
-	return w.writer.Write([]byte(time.Now().Format(w.timeFormat) + "\t" + "ep@" + w.hostname + "\t" + w.user + "\t" + strconv.Itoa(os.Getpid()) + "\t" + string(b)))
+	return w.writer.Write([]byte(time.Now().Format(w.timeFormat) + "\t" + w.app + "@" + w.hostname + "\t" + w.user + "\t" + strconv.Itoa(os.Getpid()) + "\t" + string(b)))
 }
 
-func Logger(logToFile string) log.Logger {
+type ELogger struct {
+	log.Logger
+	debug bool
+}
+
+func (logger ELogger) Info(args ...interface{}) {
+	logger.Println(args...)
+}
+
+func (logger ELogger) Debug(args ...interface{}) {
+	if logger.debug {
+		logger.Println(args...)
+	}
+}
+
+func GetELogger(logToFile string, logSource string, debug bool) ELogger {
+	return ELogger{
+		Logger: GetLogger(logToFile, logSource),
+		debug: debug,
+	}
+}
+
+func GetLogger(logToFile string, logSource string) log.Logger {
 
 	var logger *log.Logger
+
+	if len(logSource) == 0 {
+		logSource = "ep"
+	}
 
 	if logToFile == "" {
 		logger = log.New(ioutil.Discard, "", 0)
@@ -47,7 +74,7 @@ func Logger(logToFile string) log.Logger {
 		if logToFile == "-" { // to stdout
 			logger = log.New(os.Stdout, "", 0)
 			logger.SetFlags(0)
-			logger.SetOutput(logWriter{writer: logger.Writer(), timeFormat: "2006-01-02T15:04:05.999Z07:00", user: usern, hostname: hostname})
+			logger.SetOutput(logWriter{writer: logger.Writer(), timeFormat: "2006-01-02T15:04:05.999Z07:00", user: usern, app: logSource, hostname: hostname})
 		} else { // to file
 			// get binary path
 			logpath := logToFile
