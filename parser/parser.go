@@ -169,6 +169,7 @@ type Pattern struct {
 	Order int
 	Keepfield bool
 	Field string
+	Fields map[string]string
 	Parent StringArray
 	addedParent StringArray
 	Children StringArray
@@ -188,15 +189,15 @@ type Parser struct {
 }
 
 // parser public methods
-func (p Parser) ParseLine(line string) map[string]string {
+func (p Parser) ParseLine(line string) map[string]interface{} {
 	//return map[string]interface{}{"key": line}
-	result := make(map[string]string)
+	result := make(map[string]interface{})
 	result["data"] = line
 	p.parseLineInternal(result, "")
 	return result
 }
 
-func (p Parser) parseLineInternal(result map[string]string, parent string) {
+func (p Parser) parseLineInternal(result map[string]interface{}, parent string) {
 
 	// iterate over patterns in sorted order
 	for _,patKey := range p.sortedIndex {
@@ -221,7 +222,7 @@ func (p Parser) parseLineInternal(result map[string]string, parent string) {
 
 				if ok { // we have this field, so we check for match
 
-					if ! condCompiledPattern.MatchString(value) {
+					if strValue, ok := value.(string); ok && ! condCompiledPattern.MatchString(strValue) {
 						// does not match, so we skip this pattern
 						skip=true
 						break
@@ -239,7 +240,7 @@ func (p Parser) parseLineInternal(result map[string]string, parent string) {
 				value, ok := result[condField]
 
 				if ok { // we have this field, so we check for match
-					if ! condCompiledPattern.MatchString(value) {
+					if strValue, ok := value.(string); ok &&  ! condCompiledPattern.MatchString(strValue) {
 						skip=true
 						break
 					}
@@ -257,9 +258,11 @@ func (p Parser) parseLineInternal(result map[string]string, parent string) {
 		// do pattern matching
 		var match map[string]string
 		for _, compiledPat := range pat.compiledPattern {
-			match = compiledPat.ParseString(result[field])
-			if len(match) > 0 {
-				break
+			if fieldValue, ok := result[field].(string); ok {
+				match = compiledPat.ParseString(fieldValue)
+				if len(match) > 0 {
+					break
+				}
 			}
 		}
 
@@ -267,7 +270,9 @@ func (p Parser) parseLineInternal(result map[string]string, parent string) {
 		if len(match) > 0 {
 
 			result["event_type"] = pat.Name
-			result["event_type_path"] += "/" + pat.Name
+			if pathValue, ok := result["event_type_path"].(string); ok {
+				result["event_type_path"] = pathValue + "/" + pat.Name
+			}
 
 			// delete source field if not stated otherwise
 			value := result[field]
@@ -283,9 +288,11 @@ func (p Parser) parseLineInternal(result map[string]string, parent string) {
 			// execute optionalpattern matches
 			if len(pat.optionalCompiledPattern) > 0 {
 				for _, optionalCompiledPatternItem := range pat.optionalCompiledPattern {
-					optMatch := optionalCompiledPatternItem.ParseString(value)
-					for k,v := range optMatch {
-						result[k] = v
+					if strValue, ok := value.(string); ok {
+						optMatch := optionalCompiledPatternItem.ParseString(strValue)
+						for k,v := range optMatch {
+							result[k] = v
+						}
 					}
 				}
 			}
@@ -315,6 +322,10 @@ func (p *Parser) preCompilePatterns() {
 	for i, patConf := range p.Patterns {
 		tmpPattern := p.Patterns[i]
 
+		if tmpPattern.Fields == nil {
+			tmpPattern.Fields = make(map[string]string)
+		}
+
 		// add default grok patterns to all
 		if (patConf.Grokpattern == nil) {
 			tmpPattern.Grokpattern = make(map[string]string)
@@ -336,6 +347,11 @@ func (p *Parser) preCompilePatterns() {
 				continue
 			}
 			tmpPattern.compiledPattern = append(tmpPattern.compiledPattern, *cg)
+			for _, fieldName := range cg.GetFields() {
+				if fieldName != "" {
+					tmpPattern.Fields[fieldName] = "string"
+				}
+			}
 		}
 
 		// optional patterns
