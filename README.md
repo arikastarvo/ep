@@ -1,8 +1,6 @@
 
 # ep - event parser
 
-[![Build Status][actions-badge]][actions-url]
-
 Simple unstructured textual data parser using regex named groups (with grok support). Input data is consumed from stdin, parsed using defined patterns and printed to stdout as json. From there other utils such as `brimsec/zq`, `endgameinc/eql` or `stedolan/jq` can be used to query the data.
 
 Can be used to parse existing files (piping contents to **ep** using **cat**), but primary focus is streaming content (from **tail -f** or other long-lived processes that generate unbounded data streams). Simple parsing patterns can be defined using command line parameters (-p/-pattern params). More complex pattern setups that provide option to differentiate different event types, nesting etc can be configured via yaml configuration files.
