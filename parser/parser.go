@@ -1,9 +1,11 @@
 package parser
 
 import(
+	"encoding/json"
 	"gopkg.in/yaml.v3"
 	"ep/elog"
 	//"log"
+	//"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -162,6 +164,7 @@ type PatternAlias Pattern
 type Pattern struct {
 	Name string
 	Pattern StringArray
+	Json string
 	compiledPattern []grok.CompiledGrok
 	Optionalpattern StringArray
 	optionalCompiledPattern []grok.CompiledGrok
@@ -266,8 +269,18 @@ func (p Parser) parseLineInternal(result map[string]interface{}, parent string) 
 			}
 		}
 
-		// if we have a match (captured values), then gather results, optionally parse child patterns and finally break look 	
+		// if we have a match (captured values), then gather results, optionally parse child patterns and finally break look 
 		if len(match) > 0 {
+
+			// if we have a json, then convert it here
+			if fieldValue, ok := result[pat.Json].(string); ok && len(pat.Json) > 0 {
+				if err := json.Unmarshal([]byte(fieldValue), &result); err != nil {
+					break
+				} else {
+					delete(match, pat.Json)
+				}
+			}
+			// end json use-case
 
 			result["event_type"] = pat.Name
 			if pathValue, ok := result["event_type_path"].(string); ok {
