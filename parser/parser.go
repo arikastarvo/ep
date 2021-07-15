@@ -273,7 +273,7 @@ func (p Parser) parseLineInternal(result map[string]interface{}, parent string) 
 		if len(match) > 0 {
 
 			// if we have a json, then convert it here
-			if fieldValue, ok := result[pat.Json].(string); ok && len(pat.Json) > 0 {
+			if fieldValue, ok := match[pat.Json]; ok && len(pat.Json) > 0 {
 				if err := json.Unmarshal([]byte(fieldValue), &result); err != nil {
 					break
 				} else {
