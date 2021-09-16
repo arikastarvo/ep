@@ -263,59 +263,58 @@ func (p Parser) parseLineInternal(result map[string]interface{}, parent string) 
 		for _, compiledPat := range pat.compiledPattern {
 			if fieldValue, ok := result[field].(string); ok {
 				match = compiledPat.ParseString(fieldValue)
+				// if we have a match (captured values), then gather results, optionally parse child patterns and finally break look 
 				if len(match) > 0 {
-					break
-				}
-			}
-		}
 
-		// if we have a match (captured values), then gather results, optionally parse child patterns and finally break look 
-		if len(match) > 0 {
-
-			// if we have a json, then convert it here
-			if fieldValue, ok := match[pat.Json]; ok && len(pat.Json) > 0 {
-				if err := json.Unmarshal([]byte(fieldValue), &result); err != nil {
-					break
-				} else {
-					delete(match, pat.Json)
-				}
-			}
-			// end json use-case
-
-			result["event_type"] = pat.Name
-			if pathValue, ok := result["event_type_path"].(string); ok {
-				result["event_type_path"] = pathValue + "/" + pat.Name
-			}
-
-			// delete source field if not stated otherwise
-			value := result[field]
-			if ! pat.Keepfield {
-				delete(result, field)
-			}
-
-			// put data to results object
-			for k,v := range match {
-				result[k] = v
-			}
-
-			// execute optionalpattern matches
-			if len(pat.optionalCompiledPattern) > 0 {
-				for _, optionalCompiledPatternItem := range pat.optionalCompiledPattern {
-					if strValue, ok := value.(string); ok {
-						optMatch := optionalCompiledPatternItem.ParseString(strValue)
-						for k,v := range optMatch {
-							result[k] = v
+					// if we have a json, then convert it here
+					if fieldValue, ok := match[pat.Json]; ok && len(pat.Json) > 0 {
+						if err := json.Unmarshal([]byte(fieldValue), &result); err != nil {
+							// json parsing failed, skip this pattern and try luck with the next one
+							break
+						} else {
+							delete(match, pat.Json)
 						}
 					}
+					// end json use-case
+
+					result["event_type"] = pat.Name
+					if pathValue, ok := result["event_type_path"].(string); ok {
+						result["event_type_path"] = pathValue + "/" + pat.Name
+					}
+
+					// delete source field if not stated otherwise
+					value := result[field]
+					if ! pat.Keepfield {
+						delete(result, field)
+					}
+
+					// put data to results object
+					for k,v := range match {
+						result[k] = v
+					}
+
+					// execute optionalpattern matches
+					if len(pat.optionalCompiledPattern) > 0 {
+						for _, optionalCompiledPatternItem := range pat.optionalCompiledPattern {
+							if strValue, ok := value.(string); ok {
+								optMatch := optionalCompiledPatternItem.ParseString(strValue)
+								for k,v := range optMatch {
+									result[k] = v
+								}
+							}
+						}
+					}
+
+					// parse child patterns if there exists any
+					if len(pat.Children) > 0 {
+						p.parseLineInternal(result, pat.Name)
+					}
+					break
 				}
 			}
-
-			// parse child patterns if there exists any
-			if len(pat.Children) > 0 {
-				p.parseLineInternal(result, pat.Name)
-			}
-			break
 		}
+
+		
 	}
 
 }
