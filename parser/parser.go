@@ -36,6 +36,9 @@ func (a *StringArray) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // add map key (pat name) to every pattern aso
 func (obj *PatternEntry) UnmarshalYAML(unmarshal func(interface{}) error) error {
+
+	logger.Debug("start parsing configuration")
+
 	var aliasObj PatternEntryAlias
 	err := unmarshal(&aliasObj)
 	if err != nil {
@@ -137,6 +140,9 @@ func (obj *PatternEntry) UnmarshalYAML(unmarshal func(interface{}) error) error 
 		logger.Debug("finished processing", key)
 	}
 	*obj = PatternEntry(aliasObj)
+	
+	logger.Debug("finished parsing configuration")
+
 	return nil
 }
 
@@ -202,6 +208,9 @@ func (p Parser) ParseLine(line string) map[string]interface{} {
 
 func (p Parser) parseLineInternal(result map[string]interface{}, parent string) {
 
+	// label
+	out: 
+
 	// iterate over patterns in sorted order
 	for _,patKey := range p.sortedIndex {
 
@@ -262,6 +271,7 @@ func (p Parser) parseLineInternal(result map[string]interface{}, parent string) 
 		var match map[string]string
 		for _, compiledPat := range pat.compiledPattern {
 			if fieldValue, ok := result[field].(string); ok {
+
 				match = compiledPat.ParseString(fieldValue)
 				// if we have a match (captured values), then gather results, optionally parse child patterns and finally break look 
 				if len(match) > 0 {
@@ -280,6 +290,8 @@ func (p Parser) parseLineInternal(result map[string]interface{}, parent string) 
 					result["event_type"] = pat.Name
 					if pathValue, ok := result["event_type_path"].(string); ok {
 						result["event_type_path"] = pathValue + "/" + pat.Name
+					} else {
+						result["event_type_path"] = pat.Name
 					}
 
 					// delete source field if not stated otherwise
@@ -309,7 +321,9 @@ func (p Parser) parseLineInternal(result map[string]interface{}, parent string) 
 					if len(pat.Children) > 0 {
 						p.parseLineInternal(result, pat.Name)
 					}
-					break
+					
+					// after a sucessful match, break out of this event type (don't try to match siblings)
+					break out
 				}
 			}
 		}
