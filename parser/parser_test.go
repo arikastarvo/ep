@@ -5,7 +5,7 @@ import(
 	"testing"
 )
 
-func TestParserFromBytesSimple(t *testing.T) {
+func TestParserFromBytesOneSimpleEvent(t *testing.T) {
 	p := parser.ParserFromBytes([]byte(`event: ^%{DATA:field}$`))
 	
 	if _, ok := p.Patterns["event"]; ! ok {
@@ -18,5 +18,164 @@ func TestParserFromBytesSimple(t *testing.T) {
 
 	if len(p.Patterns["event"].Fields) != 1 {
 		t.Error("there should be exactly 1 field in `event` event type")
+	}
+}
+
+func TestParserFromBytesMultipleSimpleEvent(t *testing.T) {
+	definition := 
+`
+first-event: ^%{DATA:field}$
+second-event: ^%{DATA:field}$
+third-event: ^%{DATA:field}$
+`
+	p := parser.ParserFromBytes([]byte(definition))
+	
+	if _, ok := p.Patterns["first-event"]; ! ok {
+		t.Error("no event type 'event' found")
+	}
+	
+	if len(p.Patterns) != 3 {
+		t.Error("there should be exactly 1 event type defined")
+	}
+
+	if len(p.Patterns["first-event"].Fields) != 1 {
+		t.Error("there should be exactly 1 field in `event` event type")
+	}
+	
+	if len(p.Patterns["third-event"].Fields) != 1 {
+		t.Error("there should be exactly 1 field in `event` event type")
+	}
+}
+
+func TestParserFromBytesSimpleEventWithMultiplePatterns(t *testing.T) {
+	definition := 
+`
+event:
+ - ^%{INT:int}\t%{DATA:string}$
+ - ^%{NUMBER:numeric}\t%{DATA:string}$
+`
+	p := parser.ParserFromBytes([]byte(definition))
+
+	if _, ok := p.Patterns["event"]; ! ok {
+		t.Error("no event type 'event' found")
+	}
+	
+	if len(p.Patterns) != 1 {
+		t.Error("there should be exactly 1 event type defined")
+	}
+
+	if len(p.Patterns["event"].Fields) != 3 {
+		t.Error("there should be exactly 3 fields in `event` event type")
+	}
+}
+
+func TestParserFromBytesSimpleEventWithMultiplePatterns2(t *testing.T) {
+	definition := 
+`
+event:
+  pattern:
+   - ^%{INT:int}\t%{DATA:string}$
+   - ^%{NUMBER:numeric}\t%{DATA:string}$
+`
+	p := parser.ParserFromBytes([]byte(definition))
+
+	if _, ok := p.Patterns["event"]; ! ok {
+		t.Error("no event type 'event' found")
+	}
+	
+	if len(p.Patterns) != 1 {
+		t.Error("there should be exactly 1 event type defined")
+	}
+
+	if len(p.Patterns["event"].Pattern) != 2 {
+		t.Error("there should be exactly 2 patterns in `event` event type")
+	}
+
+	if len(p.Patterns["event"].Fields) != 3 {
+		t.Error("there should be exactly 3 fields in `event` event type")
+	}
+}
+
+
+func TestParserFromBytesSimpleEventWithMultiplePatternsAndOptionalPatterns(t *testing.T) {
+	definition := 
+`
+event:
+  pattern:
+   - ^%{INT:int}\t%{DATA:string}$
+   - ^%{NUMBER:numeric}\t%{DATA:string}$
+  optionalpattern:
+   - "%{NUMBER:numeric}"
+`
+	p := parser.ParserFromBytes([]byte(definition))
+
+	if _, ok := p.Patterns["event"]; ! ok {
+		t.Error("no event type 'event' found")
+	}
+	
+	if len(p.Patterns["event"].Optionalpattern) != 1 {
+		t.Error("there should be exactly 1 optionalpattern in `event` event type")
+	}
+
+	if len(p.Patterns["event"].Fields) != 3 {
+		t.Error("there should be exactly 3 field in `event` event type")
+	}
+}
+
+
+func TestParserFromBytesComplexEvent(t *testing.T) {
+	definition := 
+`
+event:
+  pattern:
+   - ^%{INT:int}\t%{DATA:string}$
+   - ^%{NUMBER:numeric}\t%{DATA:string}$
+  optionalpattern:
+   - "%{NUMBER:numeric}"
+  grokpattern:
+    CUSTOM: ([1-9]|10)
+  order: 2
+  field: source-field
+  cond:
+    int: 10
+  softcond:
+    numeric: 10
+`
+	p := parser.ParserFromBytes([]byte(definition))
+
+	if _, ok := p.Patterns["event"]; ! ok {
+		t.Error("no event type 'event' found")
+	}
+
+	if len(p.Patterns["event"].Pattern) != 2 {
+		t.Error("there should be exactly 2 patterns in `event` event type")
+	}
+
+	if len(p.Patterns["event"].Optionalpattern) != 1 {
+		t.Error("there should be exactly 1 optionalpattern in `event` event type")
+	}
+	
+	if len(p.Patterns["event"].Grokpattern) != 2 {
+		t.Error("there should be exactly 2 grokpattern in `event` event type")
+	}
+
+	if p.Patterns["event"].Order != 2 {
+		t.Error("Order for `event` event type should be 2")
+	}
+	
+	if p.Patterns["event"].Field != "source-field" {
+		t.Error("Field for `event` event type should be 'source-field'")
+	}
+	
+	if len(p.Patterns["event"].Cond) != 1 {
+		t.Error("There should be exactly 1 Cond in `event` event type")
+	}
+	
+	if len(p.Patterns["event"].Softcond) != 1 {
+		t.Error("There should be exactly 1 Softcond in `event` event type")
+	}
+	
+	if len(p.Patterns["event"].Fields) != 3 {
+		t.Error("there should be exactly 3 field in `event` event type")
 	}
 }
