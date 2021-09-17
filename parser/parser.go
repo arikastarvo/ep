@@ -12,6 +12,7 @@ import(
 	"sort"
 	"strings"
 	"github.com/trivago/grok"
+	"path/filepath"
 )
 // this is for unmarshalling string or list of strings
 // https://github.com/go-yaml/yaml/issues/100
@@ -57,11 +58,14 @@ func (obj *PatternEntry) UnmarshalYAML(unmarshal func(interface{}) error) error 
 		for _,child := range entry.Children {
 			logger.Debug("* processing child", child)
 			if _, ok := aliasObj[child]; !ok {
+				
 				// no such pattern exists (check if it's a file)
-				if _, err := os.Stat(child); err == nil {
-					fileBuf, err := ioutil.ReadFile(child)
+				filename := configBasepath + "/" + child
+				logger.Debug("no such child yet, checking if it is a file -", filename)
+				if _, err := os.Stat(filename); err == nil {
+					fileBuf, err := ioutil.ReadFile(filename)
 					if err != nil {
-						logger.Fatal("sub-config file (", child, ") read error. Err: ", err)
+						logger.Fatal("sub-config file (", filename, ") read error. Err: ", err)
 					}
 					
 					var nestedChildParser Parser
@@ -107,6 +111,8 @@ func (obj *PatternEntry) UnmarshalYAML(unmarshal func(interface{}) error) error 
 					aliasObj[key] = tmp
 					
 					logger.Debug("* exit nesting for", child)
+				} else {
+					logger.Println("no file", filename)
 				}
 			} else {
 				logger.Debug("* child", child, "already exists, not parsing again (just check for XX?)")
@@ -130,12 +136,13 @@ func (obj *PatternEntry) UnmarshalYAML(unmarshal func(interface{}) error) error 
 		for _,entryParent := range entry.Parent {
 			if _, ok := aliasObj[entryParent]; !ok {
 				
-				logger.Debug("no such parent yet, checking if it is a file -", entryParent)
+				filename := configBasepath + "/" + entryParent
+				logger.Debug("no such parent yet, checking if it is a file -", filename)
 
-				if _, err := os.Stat(entryParent); err == nil {
-					fileBuf, err := ioutil.ReadFile(entryParent)
+				if _, err := os.Stat(filename); err == nil {
+					fileBuf, err := ioutil.ReadFile(filename)
 					if err != nil {
-						logger.Fatal("sub-config file (", entryParent, ") read error. Err: ", err)
+						logger.Fatal("sub-config file (", filename, ") read error. Err: ", err)
 					}
 					
 					var nestedParentParser Parser
@@ -184,7 +191,7 @@ func (obj *PatternEntry) UnmarshalYAML(unmarshal func(interface{}) error) error 
 					
 					logger.Debug("* exit nesting for", entryParent)
 				} else {
-					logger.Println("nofile")
+					logger.Println("no file", filename)
 				}
 			} else {
 				if !contains(aliasObj[entryParent].Children, key) {
@@ -388,10 +395,7 @@ func (p Parser) parseLineInternal(result map[string]interface{}, parent string) 
 				}
 			}
 		}
-
-		
 	}
-
 }
 
 func (p Parser) PrettyPrintPatterns() (){
@@ -555,6 +559,7 @@ func remove(slice []string, s int) []string {
 // end helper methods
 
 var logger elog.ELogger
+var configBasepath = "."
 
 func SetELogger(output string, debug bool) {
 	logger = elog.GetELogger(output, "ep/parser", debug)
@@ -569,11 +574,16 @@ func ParserFromFile(configFile string) Parser {
 	if err != nil {
 		logger.Println("config file (", configFile, ") read error. Err: ", err)
 	}
-	return ParserFromBytes(fileBuf)
+	return ParserFromBytesWithConfigBasepath(fileBuf, filepath.Dir(configFile))
 }
 
 func ParserFromBytes(data []byte) Parser {
+	return ParserFromBytesWithConfigBasepath(data, ".")
+}
+
+func ParserFromBytesWithConfigBasepath(data []byte, ConfigBasepath string) Parser {
 	var p Parser
+	configBasepath = ConfigBasepath
 	yaml.Unmarshal(data, &p.Patterns)
 	p.preCompilePatterns()
 	p.generateSortedIndex()
