@@ -123,10 +123,70 @@ func (obj *PatternEntry) UnmarshalYAML(unmarshal func(interface{}) error) error 
 			}
 		}
 
-		// iterate over parents
+
+		// PARENTS
+		// 1) .. check for file refs
 		// 2) update children on other patterns to reflect relationships both ways 
 		for _,entryParent := range entry.Parent {
-			if _, ok := aliasObj[entryParent]; ok {
+			if _, ok := aliasObj[entryParent]; !ok {
+				
+				logger.Debug("no such parent yet, checking if it is a file -", entryParent)
+
+				if _, err := os.Stat(entryParent); err == nil {
+					fileBuf, err := ioutil.ReadFile(entryParent)
+					if err != nil {
+						logger.Fatal("sub-config file (", entryParent, ") read error. Err: ", err)
+					}
+					
+					var nestedParentParser Parser
+					logger.Debug("* entering nesting for", entryParent)
+					yaml.Unmarshal(fileBuf, &nestedParentParser.Patterns)
+					
+					tmp := aliasObj[key]
+
+					for nestedParentKey, nestedParentEntry := range nestedParentParser.Patterns {
+
+						//logger.Debug("checking for nested parent element", nestedParentKey)
+						if _, ok := aliasObj[nestedParentKey]; ok {
+							// just updating parents section of already existing event (only if it is top-level in it's own file context)
+							if len(nestedParentEntry.Parent) == 0 && !contains(aliasObj[nestedParentKey].Parent, key) {
+								tmp := aliasObj[nestedParentKey]
+								tmp.Parent = append(tmp.Parent, key)
+								logger.Debug("+ append parent", key, "to", nestedParentKey, ", now", tmp.Parent)
+								aliasObj[nestedParentKey] = tmp
+								//aliasObj[nestedParentKey].Parent = append(aliasObj[nestedParentKey].Parent, key)
+							} else {
+								logger.Debug("! not adding parent", key, "to", nestedParentKey, ", now", tmp.Parent)
+							}
+							
+						} else {
+							// adding a new event type to the list
+							logger.Debug("+ add new entry ", nestedParentKey)
+
+							// if this is the top-level entry for this file, then add parent (event that referenced this file)
+							if len(nestedParentEntry.Parent) == 0 {
+								nestedParentEntry.Children = append(nestedParentEntry.Children, key) 
+								logger.Debug("+ appending parent", key, "to newly added event", nestedParentKey)
+							} else {
+								logger.Debug("! not adding parent", key, "to newly added event", nestedParentKey)
+							}
+							aliasObj[nestedParentKey] = nestedParentEntry
+						}
+						// append newfound parent
+						if !contains(tmp.Children, nestedParentKey) {
+							tmp.Parent = append(tmp.Parent, nestedParentKey)
+							logger.Debug("+ add child", nestedParentKey, "to", key, ", now", tmp.Parent)
+						}
+					}
+					// mark sub event-types from files for later
+					tmp.parentsFromReferencedFile = append(tmp.parentsFromReferencedFile, entryParent)
+					aliasObj[key] = tmp
+					
+					logger.Debug("* exit nesting for", entryParent)
+				} else {
+					logger.Println("nofile")
+				}
+			} else {
 				if !contains(aliasObj[entryParent].Children, key) {
 					tmp := aliasObj[entryParent]
 					tmp.Children = append(tmp.Children, key)
@@ -181,6 +241,7 @@ type Pattern struct {
 	Fields map[string]string
 	Parent StringArray
 	addedParent StringArray
+	parentsFromReferencedFile []string
 	Children StringArray
 	childrenFromReferencedFile []string
 	Cond map[string]string
