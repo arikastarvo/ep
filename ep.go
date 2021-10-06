@@ -68,6 +68,12 @@ func main() {
 	logger = elog.GetELogger(*logToFile, "ep", *logDebug)
 	parser.SetELogger(*logToFile, *logDebug)
 	
+	// find out executable dir (we use it as default basepath for conf files later)
+	ex, err := os.Executable()
+    if err != nil {
+        panic(err)
+    }
+    exPath := filepath.Dir(ex)
 
 	logger.Println("starting with conf values - pattern:", patternsArg, "; conf:", *patternConfFile)
 
@@ -80,7 +86,14 @@ func main() {
 		}
 		p = parser.ParserFromBytes([]byte(confStr))
 	} else {
-		p = parser.ParserFromFile(*patternConfFile)
+		
+		var confFile string
+		if fileExists(filepath.Join(exPath, *patternConfFile)) {
+			confFile = filepath.Join(exPath, *patternConfFile)
+		} else {
+			confFile = *patternConfFile
+		}
+		p = parser.ParserFromFile(confFile)
 	}
     
 	if *outputConfSimple {
@@ -94,12 +107,6 @@ func main() {
 	
 	grokPatternsForPathPatternMatching := make(map[string]string)
 	grokPatternsForPathPatternMatching["DIR"] = "[^\\/]+"
-	
-	ex, err := os.Executable()
-    if err != nil {
-        panic(err)
-    }
-    exPath := filepath.Dir(ex)
 
 	var pConfFile string
 	if fileExists(filepath.Join(exPath, *pathPatternConfFile)) {
