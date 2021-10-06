@@ -11,6 +11,9 @@ import(
 
 	"ep/elog"
 	"ep/parser"
+
+	"path/filepath"
+	"github.com/trivago/grok"
 )
 
 var logger elog.ELogger
@@ -50,8 +53,10 @@ func fileExists(filename string) bool {
     return !info.IsDir()
 }
 
+
 func main() {
 
+	pathPatternConfFile := flag.String("pconf", "path-patterns.txt", "set patterns file for input file path metadata extraction")
 	logToFile := flag.String("log", "", "enable logging. \"-\" for stdout, filename otherwise")
 	logDebug := flag.Bool("debug", false, "enable deug logging.")
 	outputConfSimple := flag.Bool("os", false, "output pattern conf (short format)")
@@ -85,6 +90,33 @@ func main() {
 	/*jsondata,_ := json.Marshal(p)
 	fmt.Println(string(jsondata))*/
 
+	var pathCompiledPatterns []*grok.CompiledGrok
+	
+	grokPatternsForPathPatternMatching := make(map[string]string)
+	grokPatternsForPathPatternMatching["DIR"] = "[^\\/]+"
+
+	if fileExists(*pathPatternConfFile) {
+		
+		file, err := os.Open(*pathPatternConfFile)
+		if err != nil {
+			logger.Println("could not read path pattern conf file:",err)
+		} else {
+			g, err := grok.New(grok.Config{Patterns: grokPatternsForPathPatternMatching, NamedCapturesOnly: true})
+			if err != nil {
+				logger.Fatal("could not create grok parser for file metadata extraction. Err: ", err)
+			}
+
+			scanner := bufio.NewScanner(file)
+			for scanner.Scan() {
+				compiledPattern, err := g.Compile(scanner.Text())
+				if err != nil {
+					logger.Println("could not compile pattern for file metadata extraction. Err: ", err)
+				}
+				pathCompiledPatterns = append(pathCompiledPatterns, compiledPattern)
+			}
+		}
+	}	
+
 	scanner := bufio.NewScanner(os.Stdin)
 	
 	fileInputTypeSet := false
@@ -98,18 +130,44 @@ func main() {
 		}
 		
 		if fileInput {	// handle files
+			// create metadata & match stuff
+			absolutePath,_ := filepath.Abs(line)
+			filename := filepath.Base(absolutePath)
+			dir := filepath.Dir(absolutePath)
+			
+			// metadata extraction grok
+			//var match map[string]string
+			match := make(map[string]string)
+			for _,compiledPattern := range pathCompiledPatterns {
+				tmp_match := compiledPattern.ParseString(line)
+				if len(tmp_match) > 0 {
+					for k,v := range tmp_match {
+						match[k] = v
+					}
+				}
+			}
+
 			file, err := os.Open(line)
 			defer file.Close()
 			if err != nil {
 				logger.Fatal(err)
 			} else {
+
 				subScanner := bufio.NewScanner(file)
+				
 				// optionally, resize scanner's capacity for lines over 64K, see next example
 				for subScanner.Scan() {
 
 					var subline = subScanner.Text()
 					result := make(map[string]interface{})
-					result["filename"] = line
+					result["in_relative_path"] = line
+					result["in_absolute_path"] = absolutePath
+					result["in_filename"] = filename
+					result["in_dir"] = dir
+					for k,v := range match {
+						result[k] = v
+					}
+
 					p.ParseLineWithMetadata(subline, result)
 					jsonresult,_ := json.Marshal(result)
 					fmt.Println(string(jsonresult))
