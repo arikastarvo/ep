@@ -74,6 +74,7 @@ func main() {
         panic(err)
     }
     exPath := filepath.Dir(ex)
+	logger.Println("EXDIR:", exPath)
 
 	logger.Println("starting with conf values - pattern:", patternsArg, "; conf:", *patternConfFile)
 
@@ -117,7 +118,7 @@ func main() {
 
 	if len(pConfFile) > 0 {
 		
-		file, err := os.Open(*pathPatternConfFile)
+		file, err := os.Open(pConfFile)
 		if err != nil {
 			logger.Println("could not read path pattern conf file:",err)
 		} else {
