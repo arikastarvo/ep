@@ -94,8 +94,21 @@ func main() {
 	
 	grokPatternsForPathPatternMatching := make(map[string]string)
 	grokPatternsForPathPatternMatching["DIR"] = "[^\\/]+"
+	
+	ex, err := os.Executable()
+    if err != nil {
+        panic(err)
+    }
+    exPath := filepath.Dir(ex)
 
-	if fileExists(*pathPatternConfFile) {
+	var pConfFile string
+	if fileExists(filepath.Join(exPath, *pathPatternConfFile)) {
+		pConfFile = filepath.Join(exPath, *pathPatternConfFile)
+	} else if fileExists(*pathPatternConfFile) {
+		pConfFile = *pathPatternConfFile
+	}
+
+	if len(pConfFile) > 0 {
 		
 		file, err := os.Open(*pathPatternConfFile)
 		if err != nil {
