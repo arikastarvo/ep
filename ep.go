@@ -103,11 +103,11 @@ func main() {
 			if err != nil {
 				logger.Fatal(err)
 			} else {
-				scanner := bufio.NewScanner(file)
+				subScanner := bufio.NewScanner(file)
 				// optionally, resize scanner's capacity for lines over 64K, see next example
-				for scanner.Scan() {
+				for subScanner.Scan() {
 
-					var subline = scanner.Text()
+					var subline = subScanner.Text()
 					result := make(map[string]interface{})
 					result["filename"] = line
 					p.ParseLineWithMetadata(subline, result)
