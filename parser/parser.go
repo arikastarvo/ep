@@ -274,6 +274,14 @@ func (p Parser) ParseLine(line string) map[string]interface{} {
 	return result
 }
 
+func (p Parser) ParseLineWithMetadata(line string, result map[string]interface{}) map[string]interface{} {
+	//return map[string]interface{}{"key": line}
+	//result := make(map[string]interface{})
+	result["data"] = line
+	p.parseLineInternal(result, "")
+	return result
+}
+
 func (p Parser) parseLineInternal(result map[string]interface{}, parent string) {
 
 	// label

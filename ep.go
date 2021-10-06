@@ -42,6 +42,13 @@ func init() {
     flag.Var(&patternsArg, "p", "short version of -pattern")
 }
 
+func fileExists(filename string) bool {
+    info, err := os.Stat(filename)
+    if os.IsNotExist(err) {
+        return false
+    }
+    return !info.IsDir()
+}
 
 func main() {
 
@@ -79,12 +86,39 @@ func main() {
 	fmt.Println(string(jsondata))*/
 
 	scanner := bufio.NewScanner(os.Stdin)
+	
+	fileInputTypeSet := false
+	fileInput := false
 
 	for scanner.Scan() {
 		// read line from stdin
 		var line = scanner.Text()
-		result := p.ParseLine(line)
-		jsonresult,_ := json.Marshal(result)
-		fmt.Println(string(jsonresult))
+		if !fileInputTypeSet {
+			fileInput = fileExists(line)
+		}
+		
+		if fileInput {	// handle files
+			file, err := os.Open(line)
+			defer file.Close()
+			if err != nil {
+				logger.Fatal(err)
+			} else {
+				scanner := bufio.NewScanner(file)
+				// optionally, resize scanner's capacity for lines over 64K, see next example
+				for scanner.Scan() {
+
+					var subline = scanner.Text()
+					result := make(map[string]interface{})
+					result["filename"] = line
+					p.ParseLineWithMetadata(subline, result)
+					jsonresult,_ := json.Marshal(result)
+					fmt.Println(string(jsonresult))
+				}
+			}
+		} else { // handle just stdin data
+			result := p.ParseLine(line)
+			jsonresult,_ := json.Marshal(result)
+			fmt.Println(string(jsonresult))
+		}
 	}
 }
