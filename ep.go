@@ -62,6 +62,7 @@ func main() {
 	logToFile := flag.String("log", "", "enable logging. \"-\" for stdout, filename otherwise")
 	logDebug := flag.Bool("debug", false, "enable deug logging.")
 	outputConfSimple := flag.Bool("os", false, "output pattern conf (short format)")
+	outputConfJson := flag.Bool("oj", false, "output pattern conf structure as json")
 	flag.Parse()
 
 	/**
@@ -76,7 +77,6 @@ func main() {
         panic(err)
     }
     exPath := filepath.Dir(ex)
-	logger.Println("EXDIR:", exPath)
 
 	logger.Println("starting with conf values - pattern:", patternsArg, "; conf:", *patternConfFile)
 
@@ -103,8 +103,11 @@ func main() {
         p.PrettyPrintPatterns()
         os.Exit(0)
     }
-	/*jsondata,_ := json.Marshal(p)
-	fmt.Println(string(jsondata))*/
+	if *outputConfJson {
+		jsondata,_ := json.Marshal(p)
+		fmt.Println(string(jsondata))
+		os.Exit(0)
+	}
 
 	var pathCompiledPatterns []*grok.CompiledGrok
 	
