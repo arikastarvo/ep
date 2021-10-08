@@ -14,6 +14,7 @@ import(
 
 	"path/filepath"
 	"github.com/trivago/grok"
+	"compress/gzip"
 )
 
 var logger elog.ELogger
@@ -155,6 +156,8 @@ func main() {
 			absolutePath,_ := filepath.Abs(line)
 			filename := filepath.Base(absolutePath)
 			dir := filepath.Dir(absolutePath)
+			ext := filepath.Ext(line)
+			
 			
 			// metadata extraction grok
 			//var match map[string]string
@@ -173,8 +176,17 @@ func main() {
 			if err != nil {
 				logger.Fatal(err)
 			} else {
-
-				subScanner := bufio.NewScanner(file)
+				var subScanner *bufio.Scanner
+				if ext == ".gz" {
+					rawContents, err := gzip.NewReader(file)
+					if err != nil {
+						logger.Println("could not open file as gz, err:", err)
+					}
+					subScanner = bufio.NewScanner(rawContents)
+				} else {
+					subScanner = bufio.NewScanner(file)
+				}
+				
 				
 				// optionally, resize scanner's capacity for lines over 64K, see next example
 				for subScanner.Scan() {
