@@ -58,6 +58,7 @@ func fileExists(filename string) bool {
 func main() {
 
 	pathPatternConfFile := flag.String("pconf", "path-patterns.txt", "set patterns file for input file path metadata extraction")
+	pathDetails := flag.Bool("pd", false, "output path details if dealing with files")
 	logToFile := flag.String("log", "", "enable logging. \"-\" for stdout, filename otherwise")
 	logDebug := flag.Bool("debug", false, "enable deug logging.")
 	outputConfSimple := flag.Bool("os", false, "output pattern conf (short format)")
@@ -197,11 +198,19 @@ func main() {
 					result["in_absolute_path"] = absolutePath
 					result["in_filename"] = filename
 					result["in_dir"] = dir
+					result["gzip"] = (ext == ".gz")
 					for k,v := range match {
 						result[k] = v
 					}
 
 					p.ParseLineWithMetadata(subline, result)
+					if ! *pathDetails {
+						delete(result, "in_relative_path")
+						delete(result, "in_absolute_path")
+						delete(result, "in_filename")
+						delete(result, "in_dir")
+						delete(result, "gzip")
+					}
 					jsonresult,_ := json.Marshal(result)
 					fmt.Println(string(jsonresult))
 				}
