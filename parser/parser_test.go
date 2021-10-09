@@ -179,3 +179,45 @@ event:
 		t.Error("there should be exactly 3 field in `event` event type")
 	}
 }
+
+
+func TestReplace(t *testing.T) {
+	definition := 
+`
+event:
+  pattern: ^%{INT:field_1}\t%{DATA:field_2}$
+  replace:
+    - field: field_1
+      pattern: 1
+      replace: 0
+    - field: field_2
+      pattern: value
+      replace: 'altered value'
+`
+	p := parser.ParserFromBytes([]byte(definition))
+
+	if _, ok := p.Patterns["event"]; ! ok {
+		t.Error("no event type 'event' found")
+	}
+
+	if len(p.Patterns["event"].Replace) != 2 {
+		t.Error("there should be exactly 2 replace definition in `event` event type")
+	}
+
+	result := p.ParseLine("1\tvalue")
+	if _, ok := result["field_1"]; ! ok {
+		t.Error("no field_1 found in result")
+	}
+
+	if result["field_1"] != "0" {
+		t.Error("field_1 value must be 0, is:", result["field_1"])
+	}
+	
+	if _, ok := result["field_2"]; ! ok {
+		t.Error("no field_2 found in result")
+	}
+	
+	if result["field_2"] != "altered value" {
+		t.Error("field_2 value must be 'altered value', is:", result["field_2"])
+	}
+}

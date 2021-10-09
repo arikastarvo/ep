@@ -13,6 +13,7 @@ import(
 	"strings"
 	"github.com/trivago/grok"
 	"path/filepath"
+	"regexp"
 )
 // this is for unmarshalling string or list of strings
 // https://github.com/go-yaml/yaml/issues/100
@@ -255,6 +256,8 @@ type Pattern struct {
 	compiledCond map[string]grok.CompiledGrok
 	Softcond map[string]string
 	compiledSoftcond map[string]grok.CompiledGrok
+	Replace []map[string]string
+	compiledReplace []map[string]interface{}
 }
 
 type PatternEntryAlias PatternEntry
@@ -393,6 +396,18 @@ func (p Parser) parseLineInternal(result map[string]interface{}, parent string) 
 						}
 					}
 
+					// execute replace definitions
+					if len(pat.compiledReplace) > 0 {
+						for _, compiledReplaceDefinition := range pat.compiledReplace {
+							if fieldValue, ok := result[compiledReplaceDefinition["field"].(string)].(string); ok {
+								var pat regexp.Regexp
+								pat = compiledReplaceDefinition["pattern"].(regexp.Regexp)
+								s := pat.ReplaceAllString(fieldValue, compiledReplaceDefinition["replace"].(string))
+								result[compiledReplaceDefinition["field"].(string)] = s
+							}
+						}
+					}
+
 					// parse child patterns if there exists any
 					if len(pat.Children) > 0 {
 						p.parseLineInternal(result, pat.Name)
@@ -483,6 +498,18 @@ func (p *Parser) preCompilePatterns() {
 				continue
 			}
 			tmpPattern.compiledSoftcond[field] = *cg
+		}
+
+		// replace patterns
+		for _, replaceDefinition := range patConf.Replace {
+			//cg,err := g.Compile(replaceDefinition["pattern"])
+			cg := regexp.MustCompile(replaceDefinition["pattern"])
+			
+			compiledReplaceDefinition := make(map[string]interface{})
+			compiledReplaceDefinition["field"] = replaceDefinition["field"]
+			compiledReplaceDefinition["replace"] = replaceDefinition["replace"]
+			compiledReplaceDefinition["pattern"] = *cg
+			tmpPattern.compiledReplace = append(tmpPattern.compiledReplace, compiledReplaceDefinition)
 		}
 
 		p.Patterns[i] = tmpPattern
