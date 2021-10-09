@@ -51,7 +51,8 @@ func fileExists(filename string) bool {
     if os.IsNotExist(err) {
         return false
     }
-    return !info.IsDir()
+	
+    return info != nil && !info.IsDir()
 }
 
 
@@ -91,6 +92,7 @@ func main() {
 	} else {
 		
 		var confFile string
+		
 		if fileExists(filepath.Join(exPath, *patternConfFile)) {
 			confFile = filepath.Join(exPath, *patternConfFile)
 		} else {
