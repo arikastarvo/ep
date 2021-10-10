@@ -15,6 +15,8 @@ import(
 	"path/filepath"
 	"github.com/trivago/grok"
 	"compress/gzip"
+    //gzip "github.com/klauspost/pgzip"
+	"sync"
 )
 
 var logger elog.ELogger
@@ -55,6 +57,24 @@ func fileExists(filename string) bool {
     return info != nil && !info.IsDir()
 }
 
+func parseAndOutput(line string, p parser.Parser) {
+	result := p.ParseLine(line)
+	jsonresult,_ := json.Marshal(result)
+	fmt.Println(string(jsonresult))
+}
+
+func parseAndOutputWithMetadata(line string, p parser.Parser, result map[string]interface{}, pathDetails bool) {
+	p.ParseLineWithMetadata(line, result)
+	if ! pathDetails {
+		delete(result, "in_relative_path")
+		delete(result, "in_absolute_path")
+		delete(result, "in_filename")
+		delete(result, "in_dir")
+		delete(result, "gzip")
+	}
+	jsonresult,_ := json.Marshal(result)
+	fmt.Println(string(jsonresult))
+}
 
 func main() {
 
@@ -64,6 +84,7 @@ func main() {
 	logDebug := flag.Bool("debug", false, "enable deug logging.")
 	outputConfSimple := flag.Bool("os", false, "output pattern conf (short format)")
 	outputConfJson := flag.Bool("oj", false, "output pattern conf structure as json")
+	parseSingleThread := flag.Bool("single-threaded", false, "use single threaded processing")
 	flag.Parse()
 
 	/**
@@ -150,6 +171,8 @@ func main() {
 	fileInputTypeSet := false
 	fileInput := false
 
+	var wg sync.WaitGroup
+
 	for scanner.Scan() {
 		// read line from stdin
 		var line = scanner.Text()
@@ -207,23 +230,29 @@ func main() {
 					for k,v := range match {
 						result[k] = v
 					}
-
-					p.ParseLineWithMetadata(subline, result)
-					if ! *pathDetails {
-						delete(result, "in_relative_path")
-						delete(result, "in_absolute_path")
-						delete(result, "in_filename")
-						delete(result, "in_dir")
-						delete(result, "gzip")
+					
+					if *parseSingleThread {
+						parseAndOutputWithMetadata(subline, p, result, *pathDetails)
+					} else {
+						wg.Add(1)
+						go func() {
+							defer wg.Done()
+							parseAndOutputWithMetadata(subline, p, result, *pathDetails)
+						}()
 					}
-					jsonresult,_ := json.Marshal(result)
-					fmt.Println(string(jsonresult))
 				}
 			}
 		} else { // handle just stdin data
-			result := p.ParseLine(line)
-			jsonresult,_ := json.Marshal(result)
-			fmt.Println(string(jsonresult))
+			if *parseSingleThread {
+				parseAndOutput(line, p)
+			} else {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					go parseAndOutput(line, p)
+				}()
+			}
 		}
 	}
+	wg.Wait()
 }
