@@ -90,7 +90,7 @@ func GetLogger(logToFile string, logSource string) log.Logger {
 				log.Println("opening file " + logToFile + " failed, writing log to stdout")
 			} else {
 				logger = log.New(f, "", 0)
-				logger.SetOutput(logWriter{writer: logger.Writer(), timeFormat: "2006-01-02T15:04:05.999Z", user: usern, hostname: hostname})
+				logger.SetOutput(logWriter{writer: logger.Writer(), timeFormat: "2006-01-02T15:04:05.999Z", user: usern, app: logSource, hostname: hostname})
 			}
 		}
 	}
