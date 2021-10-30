@@ -244,3 +244,77 @@ event:
 		t.Error("data value must be 'any value', is:", result["data"])
 	}
 }
+
+
+func TestJsonField(t *testing.T) {
+	definition := 
+`
+event:
+  fields:
+    data: json
+`
+	p := parser.ParserFromBytes([]byte(definition))
+
+	if _, ok := p.Patterns["event"]; ! ok {
+		t.Error("no event type 'event' found")
+	}
+
+	if len(p.Patterns["event"].Pattern) != 0 {
+		t.Error("there should be exactly 0 Patterns in `event` event type")
+	}
+
+	result := p.ParseLine("{\"foo\":\"bar\"}")
+	
+	if result["foo"] != "bar" {
+		t.Error("field 'foo' value must be 'bar', is:", result["foo"], result)
+	}
+}
+
+func TestJsonField_2(t *testing.T) {
+	definition := 
+`
+event:
+  json: data
+`
+	p := parser.ParserFromBytes([]byte(definition))
+
+	if _, ok := p.Patterns["event"]; ! ok {
+		t.Error("no event type 'event' found")
+	}
+
+	if len(p.Patterns["event"].Pattern) != 0 {
+		t.Error("there should be exactly 0 Patterns in `event` event type")
+	}
+
+	result := p.ParseLine("{\"foo\":\"bar\"}")
+	
+	if result["foo"] != "bar" {
+		t.Error("field 'foo' value must be 'bar', is:", result["foo"], result)
+	}
+}
+
+
+
+func TestXmlField(t *testing.T) {
+	definition := 
+`
+event:
+  fields:
+    data: xml
+`
+	p := parser.ParserFromBytes([]byte(definition))
+
+	if _, ok := p.Patterns["event"]; ! ok {
+		t.Error("no event type 'event' found")
+	}
+
+	if len(p.Patterns["event"].Pattern) != 0 {
+		t.Error("there should be exactly 0 Patterns in `event` event type")
+	}
+
+	result := p.ParseLine("<foo>bar</foo>")
+	
+	if result["foo"] != "bar" {
+		t.Error("field 'foo' value must be 'bar', is:", result["foo"], result)
+	}
+}

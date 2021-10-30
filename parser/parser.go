@@ -2,7 +2,8 @@ package parser
 
 import(
 	"encoding/json"
-	"encoding/xml"
+	//"encoding/xml"
+	"github.com/clbanning/mxj/v2"
 	"gopkg.in/yaml.v3"
 	"ep/elog"
 	//"log"
@@ -239,8 +240,8 @@ type PatternAlias Pattern
 type Pattern struct {
 	Name string
 	Pattern StringArray
-	Json string
-	Xml string
+	Json StringArray
+	Xml StringArray
 	compiledPattern []grok.CompiledGrok
 	Optionalpattern StringArray
 	optionalCompiledPattern []grok.CompiledGrok
@@ -289,7 +290,6 @@ func (p Parser) ParseLineWithMetadata(line string, result map[string]interface{}
 
 func (p Parser) parseLineInternal(result map[string]interface{}, parent string) {
 
-	
 	// iterate over patterns in sorted order
 	for _,patKey := range p.sortedIndex {
 
@@ -367,28 +367,49 @@ func (p Parser) parseLineInternal(result map[string]interface{}, parent string) 
 				}
 			}
 		}
+		
 
 		// if we have a match or there are no patterns to match (we interpret that as a whole line match) .. then do some stuff
 
 		if len(match) > 0 || len(pat.compiledPattern) == 0 {
-			// if we have a json, then convert it here
-			if fieldValue, ok := match[pat.Json]; ok && len(pat.Json) > 0 {
-				if err := json.Unmarshal([]byte(fieldValue), &result); err != nil {
-					// json parsing failed, skip this pattern and try luck with the next one
-					break
-				} else {
-					delete(match, pat.Json)
+			
+			// hackish solution for json/xml (match has to have the field)
+			if len(pat.compiledPattern) == 0 {
+				match = make(map[string]string)
+				match[field] = result[field].(string)
+			}
+
+			// if we have any json fields, then try to parse them here
+			if len(pat.Json) > 0 {
+				for _, jsonField := range pat.Json {
+					if fieldValue, ok := match[jsonField]; ok {
+						if err := json.Unmarshal([]byte(fieldValue), &result); err != nil {
+							// json parsing failed, skip this pattern and try luck with the next one
+							break
+						} else {
+							delete(match, jsonField)
+						}
+					}
 				}
 			}
 			// end json use-case
 
 			// if we have a xml, then convert it here
-			if fieldValue, ok := match[pat.Xml]; ok && len(pat.Xml) > 0 {
-				if err := xml.Unmarshal([]byte(fieldValue), &result); err != nil {
-					// json parsing failed, skip this pattern and try luck with the next one
-					break
-				} else {
-					delete(match, pat.Xml)
+			if len(pat.Xml) > 0 {
+				for _, xmlField := range pat.Xml {
+					if fieldValue, ok := match[xmlField]; ok {
+						//if err := xml.Unmarshal([]byte(fieldValue), &result); err != nil {
+						if resultMap, err := mxj.NewMapXml([]byte(fieldValue)); err != nil {
+							// xml parsing failed, skip this pattern and try luck with the next one
+							//logger.Debug("xml parse err:", err)
+							break
+						} else {
+							for k,v := range resultMap {
+								result[k] = v
+							}
+							delete(match, xmlField)
+						}
+					}
 				}
 			}
 			// end xml use-case
@@ -405,10 +426,14 @@ func (p Parser) parseLineInternal(result map[string]interface{}, parent string) 
 			if ! pat.Keepfield {
 				delete(result, field)
 			}
-			
+
 			// handle the case when we don't have matches because we dont have patterns
 			if len(pat.compiledPattern) == 0 {
-				result[field] = value
+
+				// only add the field back if it's not part of json/xml .. in that case that should be eliminated (actually --- only when json/xml parsing succeeds, so there's a problem..)
+				if !contains(pat.Json, field) && !contains(pat.Xml, field) {
+					result[field] = value
+				}
 			} else {
 				// put data to results object
 				for k,v := range match {
@@ -483,6 +508,17 @@ func (p *Parser) preCompilePatterns() {
 		if err != nil {
 			logger.Println("could not create grok parser for ", patConf.Name, ". Err: ", err)
 			continue
+		}
+
+		// catch special field types before they are overridden by grok
+		for fieldName, fieldType := range tmpPattern.Fields {
+			if fieldType == "json" && !contains(tmpPattern.Json, fieldName) {
+				tmpPattern.Json = append(tmpPattern.Json, fieldName)
+			}
+			
+			if fieldType == "xml" && !contains(tmpPattern.Xml, fieldName) {
+				tmpPattern.Xml = append(tmpPattern.Xml, fieldName)
+			}
 		}
 
 		// main patterns
