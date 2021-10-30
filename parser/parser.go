@@ -2,6 +2,7 @@ package parser
 
 import(
 	"encoding/json"
+	"encoding/xml"
 	"gopkg.in/yaml.v3"
 	"ep/elog"
 	//"log"
@@ -239,6 +240,7 @@ type Pattern struct {
 	Name string
 	Pattern StringArray
 	Json string
+	Xml string
 	compiledPattern []grok.CompiledGrok
 	Optionalpattern StringArray
 	optionalCompiledPattern []grok.CompiledGrok
@@ -287,18 +289,21 @@ func (p Parser) ParseLineWithMetadata(line string, result map[string]interface{}
 
 func (p Parser) parseLineInternal(result map[string]interface{}, parent string) {
 
-	// label
-	out: 
-
+	
 	// iterate over patterns in sorted order
 	for _,patKey := range p.sortedIndex {
 
 		pat := p.Patterns[patKey]
 
+
+		// if parent event does not match, then skip this one
 		if (parent != "" && !contains(pat.Parent, parent)) || (parent == "" && len(pat.Parent) > 0) {
 			continue
 		}
 
+		//logger.Debug("Evaluating pattern", pat.Name)
+
+		// set the base field
 		field := "data"
 		if pat.Field != "" {
 			field = pat.Field
@@ -346,79 +351,106 @@ func (p Parser) parseLineInternal(result map[string]interface{}, parent string) 
 			continue
 		}
 
+
 		// do pattern matching
 		var match map[string]string
+
 		for _, compiledPat := range pat.compiledPattern {
 			if fieldValue, ok := result[field].(string); ok {
 
 				match = compiledPat.ParseString(fieldValue)
+
 				// if we have a match (captured values), then gather results, optionally parse child patterns and finally break look 
 				if len(match) > 0 {
-
-					// if we have a json, then convert it here
-					if fieldValue, ok := match[pat.Json]; ok && len(pat.Json) > 0 {
-						if err := json.Unmarshal([]byte(fieldValue), &result); err != nil {
-							// json parsing failed, skip this pattern and try luck with the next one
-							break
-						} else {
-							delete(match, pat.Json)
-						}
-					}
-					// end json use-case
-
-					result["event_type"] = pat.Name
-					if pathValue, ok := result["event_type_path"].(string); ok {
-						result["event_type_path"] = pathValue + "/" + pat.Name
-					} else {
-						result["event_type_path"] = pat.Name
-					}
-
-					// delete source field if not stated otherwise
-					value := result[field]
-					if ! pat.Keepfield {
-						delete(result, field)
-					}
-
-					// put data to results object
-					for k,v := range match {
-						result[k] = v
-					}
-
-					// execute optionalpattern matches
-					if len(pat.optionalCompiledPattern) > 0 {
-						for _, optionalCompiledPatternItem := range pat.optionalCompiledPattern {
-							if strValue, ok := value.(string); ok {
-								optMatch := optionalCompiledPatternItem.ParseString(strValue)
-								for k,v := range optMatch {
-									result[k] = v
-								}
-							}
-						}
-					}
-
-					// execute replace definitions
-					if len(pat.compiledReplace) > 0 {
-						for _, compiledReplaceDefinition := range pat.compiledReplace {
-							if fieldValue, ok := result[compiledReplaceDefinition["field"].(string)].(string); ok {
-								var pat regexp.Regexp
-								pat = compiledReplaceDefinition["pattern"].(regexp.Regexp)
-								s := pat.ReplaceAllString(fieldValue, compiledReplaceDefinition["replace"].(string))
-								result[compiledReplaceDefinition["field"].(string)] = s
-							}
-						}
-					}
-
-					// parse child patterns if there exists any
-					if len(pat.Children) > 0 {
-						p.parseLineInternal(result, pat.Name)
-					}
-					
-					// after a sucessful match, break out of this event type (don't try to match siblings)
-					break out
+					// break out of the pattern matching loop
+					break
 				}
 			}
 		}
+
+		// if we have a match or there are no patterns to match (we interpret that as a whole line match) .. then do some stuff
+
+		if len(match) > 0 || len(pat.compiledPattern) == 0 {
+			// if we have a json, then convert it here
+			if fieldValue, ok := match[pat.Json]; ok && len(pat.Json) > 0 {
+				if err := json.Unmarshal([]byte(fieldValue), &result); err != nil {
+					// json parsing failed, skip this pattern and try luck with the next one
+					break
+				} else {
+					delete(match, pat.Json)
+				}
+			}
+			// end json use-case
+
+			// if we have a xml, then convert it here
+			if fieldValue, ok := match[pat.Xml]; ok && len(pat.Xml) > 0 {
+				if err := xml.Unmarshal([]byte(fieldValue), &result); err != nil {
+					// json parsing failed, skip this pattern and try luck with the next one
+					break
+				} else {
+					delete(match, pat.Xml)
+				}
+			}
+			// end xml use-case
+
+			result["event_type"] = pat.Name
+			if pathValue, ok := result["event_type_path"].(string); ok {
+				result["event_type_path"] = pathValue + "/" + pat.Name
+			} else {
+				result["event_type_path"] = pat.Name
+			}
+
+			// delete source field if not stated otherwise
+			value := result[field]
+			if ! pat.Keepfield {
+				delete(result, field)
+			}
+			
+			// handle the case when we don't have matches because we dont have patterns
+			if len(pat.compiledPattern) == 0 {
+				result[field] = value
+			} else {
+				// put data to results object
+				for k,v := range match {
+					result[k] = v
+				}
+			}
+
+			// execute optionalpattern matches
+			if len(pat.optionalCompiledPattern) > 0 {
+				for _, optionalCompiledPatternItem := range pat.optionalCompiledPattern {
+					if strValue, ok := value.(string); ok {
+						optMatch := optionalCompiledPatternItem.ParseString(strValue)
+						for k,v := range optMatch {
+							result[k] = v
+						}
+					}
+				}
+			}
+
+			// execute replace definitions
+			if len(pat.compiledReplace) > 0 {
+				for _, compiledReplaceDefinition := range pat.compiledReplace {
+					if fieldValue, ok := result[compiledReplaceDefinition["field"].(string)].(string); ok {
+						var pat regexp.Regexp
+						pat = compiledReplaceDefinition["pattern"].(regexp.Regexp)
+						s := pat.ReplaceAllString(fieldValue, compiledReplaceDefinition["replace"].(string))
+						result[compiledReplaceDefinition["field"].(string)] = s
+					}
+				}
+			}
+
+			// parse child patterns if there exists any
+			if len(pat.Children) > 0 {
+				p.parseLineInternal(result, pat.Name)
+			}
+
+			// after a sucessful match, break out of this event type (don't try to match other patterns or sibling event types)
+			//break out
+			break
+		}
 	}
+	
 }
 
 func (p Parser) PrettyPrintPatterns() (){

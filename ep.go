@@ -173,6 +173,8 @@ func main() {
 
 	var wg sync.WaitGroup
 
+	logger.Debug("ready to accept events")
+
 	for scanner.Scan() {
 		// read line from stdin
 		var line = scanner.Text()
