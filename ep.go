@@ -221,7 +221,6 @@ func main() {
 				
 				// optionally, resize scanner's capacity for lines over 64K, see next example
 				for subScanner.Scan() {
-
 					var subline = subScanner.Text()
 					result := make(map[string]interface{})
 					result["in_relative_path"] = line
@@ -251,7 +250,7 @@ func main() {
 				wg.Add(1)
 				go func() {
 					defer wg.Done()
-					go parseAndOutput(line, p)
+					parseAndOutput(line, p)
 				}()
 			}
 		}
